@@ -1,0 +1,95 @@
+THE CONTRACT ACT, 1872
+(Act No. IX of 1872)
+
+Preamble
+WHEREAS it is expedient to define and amend certain parts of the law relating to contracts; It is hereby enacted as follows:
+
+1. Short title.
+This Act may be called the Contract Act, 1872.
+It extends to the whole of Pakistan.
+Nothing herein contained shall affect the provisions of any Statute, Act or Regulation not hereby expressly repealed.
+
+2. Interpretation-clause.
+In this Act the following words and expressions are used in the following senses, unless a contrary intention appears from the context:
+(a) When one person signifies to another his willingness to do or to abstain from doing anything, with a view to obtaining the assent of that other to such act or abstinence, he is said to make a proposal;
+(b) When the person to whom the proposal is made signifies his assent thereto, the proposal is said to be accepted. A proposal, when accepted, becomes a promise;
+(c) The person making the proposal is called the "promisor", and the person accepting the proposal is called the "promisee";
+(d) When, at the desire of the promisor, the promisee or any other person has done or abstained from doing, or does or abstains from doing, or promises to do or to abstain from doing, something, such act or abstinence or promise is called a consideration for the promise;
+(e) Every promise and every set of promises, forming the consideration for each other, is an agreement;
+(f) Promises which form the consideration or part of the consideration for each other are called reciprocal promises;
+(g) An agreement not enforceable by law is said to be void;
+(h) An agreement enforceable by law is a contract;
+(i) An agreement which is enforceable by law at the option of one or more of the parties thereto, but not at the option of the other or others, is a voidable contract;
+(j) A contract which ceases to be enforceable by law becomes void when it ceases to be enforceable.
+
+3. Communication, acceptance and revocation of proposals.
+The communication of proposals, the acceptance of proposals, and the revocation of proposals and acceptances, respectively, are deemed to be made by any act or omission of the party proposing, accepting or revoking by which he intends to communicate such proposal, acceptance or revocation, or which has the effect of communicating it.
+
+4. Communication when complete.
+The communication of a proposal is complete when it comes to the knowledge of the person to whom it is made.
+The communication of an acceptance is complete, as against the proposer, when it is put in a course of transmission to him, so as to be out of the power of the acceptor; as against the acceptor, when it comes to the knowledge of the proposer.
+
+5. Revocation of proposals and acceptances.
+A proposal may be revoked at any time before the communication of its acceptance is complete as against the proposer, but not afterwards.
+An acceptance may be revoked at any time before the communication of the acceptance is complete as against the acceptor, but not afterwards.
+
+10. What agreements are contracts.
+All agreements are contracts if they are made by the free consent of parties competent to contract, for a lawful consideration and with a lawful object, and are not hereby expressly declared to be void.
+Nothing herein contained shall affect any law in force in Pakistan and not hereby expressly repealed by which any contract is required to be made in writing or in the presence of witnesses, or any law relating to the registration of documents.
+
+11. Who are competent to contract.
+Every person is competent to contract who is not disqualified from contracting by any law to which he is subject, and who is of sound mind, and who is not disqualified from contracting by any law to which he is subject.
+
+12. What is a sound mind for the purposes of contracting.
+A person is said to be of sound mind for the purpose of making a contract if, at the time when he makes it, he is capable of understanding it and of forming a rational judgment as to its effect upon his interests.
+
+13. "Consent" defined.
+Two or more persons are said to consent when they agree upon the same thing in the same sense.
+
+14. "Free consent" defined.
+Consent is said to be free when it is not caused by:
+(1) coercion, as defined in section 15;
+(2) undue influence, as defined in section 16;
+(3) fraud, as defined in section 17;
+(4) misrepresentation, as defined in section 18;
+(5) mistake, subject to the provisions of sections 20, 21 and 22.
+Consent is said to be so caused when it would not have been given but for the existence of such coercion, undue influence, fraud, misrepresentation or mistake.
+
+15. "Coercion" defined.
+"Coercion" is the committing, or threatening to commit, any act forbidden by the Pakistan Penal Code, or the unlawful detaining, or threatening to detain, any property, to the prejudice of any person whatever, with the intention of causing any person to enter into an agreement.
+
+16. "Undue influence" defined.
+(1) A contract is said to be induced by "undue influence" where the relations subsisting between the parties are such that one of the parties is in a position to dominate the will of the other and uses that position to obtain an unfair advantage over the other.
+(2) In particular and without prejudice to the generality of the foregoing principle, a person is deemed to be in a position to dominate the will of another:
+(a) where he holds a real or apparent authority over the other, or where he stands in a fiduciary relation to the other; or
+(b) where he makes a contract with a person whose mental capacity is temporarily or permanently affected by reason of age, illness, or mental or bodily distress.
+
+17. "Fraud" defined.
+"Fraud" means and includes any of the following acts committed by a party to a contract, or with his connivance, or by his agent, with intent to deceive another party thereto or his agent, or to induce him to enter into the contract:
+(1) the suggestion, as a fact, of that which is not true, by one who does not believe it to be true;
+(2) the active concealment of a fact by one having knowledge or belief of the fact;
+(3) a promise made without any intention of performing it;
+(4) any other act fitted to deceive;
+(5) any such act or omission as the law specially declares to be fraudulent.
+
+23. What considerations and objects are lawful, and what not.
+The consideration or object of an agreement is lawful, unless:
+it is forbidden by law; or
+is of such a nature that, if permitted, it would defeat the provisions of any law; or
+is fraudulent; or
+involves or implies injury to the person or property of another; or
+the Court regards it as immoral, or opposed to public policy.
+In each of these cases, the consideration or object of an agreement is said to be unlawful. Every agreement of which the object or consideration is unlawful is void.
+
+37. Obligation of parties to contracts.
+The parties to a contract must either perform, or offer to perform, their respective promises, unless such performance is dispensed with or excused under the provisions of this Act, or of any other law.
+
+39. Effect of refusal of party to perform promise wholly.
+When a party to a contract has refused to perform, or disabled himself from performing, his promise in its entirety, the promisee may put an end to the contract, unless he has signified, by words or conduct, his acquiescence in its continuance.
+
+73. Compensation for loss or damage caused by breach of contract.
+When a contract has been broken, the party who suffers by such breach is entitled to receive, from the party who has broken the contract, compensation for any loss or damage caused to him thereby, which naturally arose in the usual course of things from such breach, or which the parties knew, when they made the contract, to be likely to result from the breach of it.
+Such compensation is not to be given for any remote and indirect loss or damage sustained by reason of the breach.
+
+74. Compensation for breach of contract where penalty stipulated for.
+When a contract has been broken, if a sum is named in the contract as the amount to be paid in case of such breach, or if the contract contains any other stipulation by way of penalty, the party complaining of the breach is entitled, whether or not actual damage or loss is proved to have been caused thereby, to receive from the party who has broken the contract reasonable compensation not exceeding the amount so named or, as the case may be, the penalty stipulated for.
