@@ -8,7 +8,7 @@ This script:
 2. Installs Python dependencies
 3. Starts Docker services (Qdrant, Postgres, Redis)
 4. Creates .env from template if missing
-5. Optionally installs local embedding models (GPU)
+5. Installs CUDA PyTorch when an NVIDIA GPU is present (CPU build otherwise)
 """
 
 import os
@@ -70,12 +70,18 @@ def check_cuda():
             return True
     except Exception:
         pass
-    print("  ⚠ No NVIDIA GPU detected. Will use DashScope API for embeddings.")
+    print("  ⚠ No NVIDIA GPU detected. Embeddings will run on CPU.")
     return False
 
 
-def install_deps():
+def install_deps(cuda_available: bool):
     print("\n[4/6] Installing Python dependencies...")
+    if cuda_available:
+        print("  Installing CUDA-enabled PyTorch first...")
+        if run("pip install torch --index-url https://download.pytorch.org/whl/cu121"):
+            print("  ✓ CUDA PyTorch installed — embeddings will use the GPU")
+        else:
+            print("  ⚠ CUDA PyTorch install failed — CPU build will be used")
     success = run(f"pip install -r {REQUIREMENTS}")
     if success:
         print("  ✓ Dependencies installed")
@@ -123,7 +129,7 @@ def main():
     if not checks["Python"]:
         sys.exit(1)
 
-    install_deps()
+    install_deps(checks["CUDA"])
     setup_env()
 
     if checks["Docker"]:

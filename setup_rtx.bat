@@ -69,7 +69,7 @@ if %ERRORLEVEL% equ 0 (
         set CUDA_OK=1
     )
 ) else (
-    echo   ! No NVIDIA GPU detected. Will use API-only mode for embeddings.
+    echo   ! No NVIDIA GPU detected. Embeddings will run on CPU.
 )
 
 REM ─── Step 6: Clone Repository ────────────────────────────
@@ -105,23 +105,21 @@ REM ─── Step 7: Install Python Dependencies ──────────
 echo.
 echo [7/8] Installing Python dependencies...
 cd /d "%PROJECT_DIR%"
+REM Install CUDA PyTorch BEFORE requirements so pip keeps the GPU build
+if %CUDA_OK% equ 1 (
+    echo   Installing CUDA-enabled PyTorch first...
+    pip install torch --index-url https://download.pytorch.org/whl/cu121
+    if !ERRORLEVEL! equ 0 (
+        echo   OK CUDA PyTorch installed. bge-m3 will run on your RTX GPU.
+    ) else (
+        echo   ! CUDA PyTorch install failed. CPU build will be used instead.
+    )
+)
 pip install -r packages\requirements.txt
 if %ERRORLEVEL% neq 0 (
     echo   X Failed to install some dependencies. Check errors above.
 ) else (
     echo   OK Python dependencies installed.
-)
-
-REM Install GPU libraries if CUDA available
-if %CUDA_OK% equ 1 (
-    echo.
-    echo   Installing GPU-accelerated embeddings (sentence-transformers + torch)...
-    pip install sentence-transformers torch --index-url https://download.pytorch.org/whl/cu121
-    if %ERRORLEVEL% equ 0 (
-        echo   OK GPU libraries installed. bge-m3 will run on your RTX 1070.
-    ) else (
-        echo   ! GPU library install failed. Will use DashScope API for embeddings.
-    )
 )
 
 REM ─── Step 8: Environment Setup ──────────────────────────

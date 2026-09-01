@@ -119,12 +119,12 @@ class VectorStore:
         if conditions:
             query_filter = Filter(should=conditions if len(conditions) > 1 else conditions)
 
-        results = self.client.search(
+        results = self.client.query_points(
             collection_name=self.collection,
-            query_vector=query_vector,
+            query=query_vector,
             limit=top_k,
             query_filter=query_filter,
-        )
+        ).points
 
         return [
             {
@@ -175,6 +175,5 @@ class VectorStore:
         return {
             "name": self.collection,
             "points_count": info.points_count,
-            "vectors_count": info.vectors_count,
             "status": info.status.value,
         }

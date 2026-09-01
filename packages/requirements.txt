@@ -18,11 +18,18 @@ fastapi>=0.141
 uvicorn>=0.52
 python-multipart>=0.0.32
 
+# --- Voice (STT realtime WebSocket client; TTS uses stdlib urllib) ---
+aiohttp>=3.9
+
 # --- Document Processing ---
 pymupdf>=1.24          # PDF text extraction
 python-docx>=1.0       # DOCX extraction
 
-# --- Optional: Local Embeddings (RTX 1070 laptop) ---
-# Uncomment on GPU machine:
-# sentence-transformers>=3.0
-# torch>=2.0
+# --- Local Embeddings (bge-m3 — runs on GPU if available, else CPU) ---
+sentence-transformers>=3.0
+# NOTE: The default PyPI torch wheel bundles CUDA (~3.5 GB) on Windows.
+# For a CPU-only install, use PyTorch's CPU index instead:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+# For NVIDIA GPU acceleration, use the CUDA index:
+#   pip install torch --index-url https://download.pytorch.org/whl/cu121
+torch>=2.0

@@ -61,15 +61,18 @@ class DashScopeEmbedder:
 
 
 class LocalEmbedder:
-    """Uses sentence-transformers locally (bge-m3 on GPU or CPU)."""
+    """Runs bge-m3 locally via sentence-transformers — GPU if available, else CPU."""
 
-    def __init__(self, model_name: str = "BAAI/bge-m3", device: str = "cpu") -> None:
+    def __init__(self, model_name: str | None = None, device: str | None = None) -> None:
         from sentence_transformers import SentenceTransformer
 
-        self.model = SentenceTransformer(model_name, device=device)
-        self.device = device
+        self.model_name = model_name or cfg.embedding_model
+        self.device = device or cfg.device
+        self.model = SentenceTransformer(self.model_name, device=self.device)
 
-    def embed(self, texts: list[str], batch_size: int = 32) -> list[list[float]]:
+    def embed(self, texts: list[str], batch_size: int | None = None) -> list[list[float]]:
+        # GPU handles larger batches comfortably; use smaller ones on CPU
+        batch_size = batch_size or (32 if self.device == "cuda" else 16)
         embeddings = self.model.encode(
             texts,
             batch_size=batch_size,
@@ -84,21 +87,45 @@ class LocalEmbedder:
 
 
 def create_embedder() -> Embedder:
-    """Factory: choose embedder based on environment."""
-    device = cfg.device
+    """Factory: pick embedder based on EMBEDDING_PROVIDER.
 
-    # If CUDA available and sentence-transformers installed, use local
-    if device == "cuda":
-        try:
-            return LocalEmbedder(device="cuda")
-        except Exception as e:
-            print(f"  Local embedder failed ({e}), falling back to DashScope API")
+    - auto (default): local sentence-transformers when installed (GPU if
+      available, else CPU), falling back to DashScope API
+    - local: force local embeddings (error if sentence-transformers missing)
+    - dashscope: force DashScope API
+    """
+    provider = cfg.embedding_provider
+    if provider not in ("auto", "local", "dashscope"):
+        print(f"  Unknown EMBEDDING_PROVIDER '{provider}' — using auto")
+        provider = "auto"
 
-    # Default: DashScope API (works everywhere, no GPU needed)
+    if provider == "dashscope":
+        return _dashscope_embedder()
+
+    try:
+        embedder = LocalEmbedder()
+        print(f"  Local embeddings on {embedder.device.upper()} ({embedder.model_name})")
+        return embedder
+    except ImportError:
+        if provider == "local":
+            raise RuntimeError(
+                "EMBEDDING_PROVIDER=local but sentence-transformers is not installed. "
+                "Run: pip install sentence-transformers"
+            )
+        print("  sentence-transformers not installed — falling back to DashScope API")
+    except Exception as e:
+        if provider == "local":
+            raise
+        print(f"  Local embedder failed ({e}) — falling back to DashScope API")
+
+    return _dashscope_embedder()
+
+
+def _dashscope_embedder() -> DashScopeEmbedder:
     if not cfg.dashscope.api_key:
         raise RuntimeError(
-            "DASHSCOPE_API_KEY not set. Set it in .env or install sentence-transformers for local embeddings."
+            "No usable local embeddings and DASHSCOPE_API_KEY not set. "
+            "Set it in .env or install sentence-transformers."
         )
-
     print("  Using DashScope API for embeddings")
     return DashScopeEmbedder()

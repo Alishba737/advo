@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import contextvars
+
 from langchain_core.tools import tool
 
 from packages.shared.models import RetrievalResult
@@ -10,6 +12,30 @@ from packages.shared.models import RetrievalResult
 # Global references set during agent initialization
 _retriever = None
 _knowledge_graph = None
+
+# Chunks retrieved during the current agent run, used to verify citations.
+# A ContextVar keeps concurrent requests (e.g. interleaved SSE streams) from
+# mixing each other's retrievals.
+_current_run_chunks: contextvars.ContextVar[list[RetrievalResult] | None] = (
+    contextvars.ContextVar("advo_retrieved_chunks", default=None)
+)
+
+
+def start_retrieval_run() -> None:
+    """Begin a new retrieval run — call before each agent invocation."""
+    _current_run_chunks.set([])
+
+
+def get_retrieved_chunks() -> list[RetrievalResult]:
+    """Return the chunks retrieved during the current (or last) run."""
+    return list(_current_run_chunks.get() or [])
+
+
+def _record_retrieval(results: list[RetrievalResult]) -> None:
+    """Record retrieval results if a run is active."""
+    chunks = _current_run_chunks.get()
+    if chunks is not None:
+        chunks.extend(results)
 
 
 def set_retriever(retriever) -> None:
@@ -41,6 +67,7 @@ def legal_search(query: str, domain: str = "", top_k: int = 6) -> str:
     results: list[RetrievalResult] = _retriever.retrieve(
         query, top_k=top_k, domain_filter=domain_filter
     )
+    _record_retrieval(results)
 
     if not results:
         return "No relevant legal provisions found for this query."
@@ -115,6 +142,7 @@ def explain_legal_concept(concept: str) -> str:
 
     # Search for the concept in the legal knowledge base
     results = _retriever.retrieve(f"definition of {concept}", top_k=3)
+    _record_retrieval(results)
 
     if not results:
         return f"No specific provisions found for '{concept}' in the legal knowledge base."

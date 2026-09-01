@@ -16,7 +16,13 @@ from langgraph.prebuilt import ToolNode
 
 from packages.agent.llm import get_primary_llm, get_fast_llm
 from packages.agent.prompts import get_system_prompt
-from packages.agent.tools import ADVO_TOOLS, set_retriever, set_knowledge_graph
+from packages.agent.tools import (
+    ADVO_TOOLS,
+    set_retriever,
+    set_knowledge_graph,
+    start_retrieval_run,
+    get_retrieved_chunks,
+)
 
 
 class AgentState(TypedDict):
@@ -108,6 +114,9 @@ class AdvoAgent:
         messages = list(history or [])
         messages.append(HumanMessage(content=user_message))
 
+        # Track retrievals made during this run so citations can be verified
+        start_retrieval_run()
+
         input_state = {
             "messages": messages,
             "user_mode": user_mode,
@@ -128,8 +137,10 @@ class AdvoAgent:
                 elif msg.content:
                     response_text = msg.content
 
-        # Extract citations from response
-        citations = _extract_citations(response_text)
+        # Extract citations from response and verify them against retrieved chunks
+        citations = _verify_citations(
+            _extract_citations(response_text), get_retrieved_chunks()
+        )
 
         return {
             "response": response_text,
@@ -151,6 +162,8 @@ class AdvoAgent:
             - type: "token" | "tool_call" | "done"
             - content: str
         """
+        start_retrieval_run()
+
         messages = list(history or [])
         messages.append(HumanMessage(content=user_message))
 
@@ -190,16 +203,128 @@ class AdvoAgent:
 
 
 def _extract_citations(response_text: str) -> list[dict]:
-    """Extract citation patterns from the response text."""
+    """Extract citation references from the response text (deduplicated).
+
+    Handles the forms the model actually produces:
+      - "Section 10 of the Contract Act"
+      - "Sections 10, 14, and 15 of the Contract Act 1872" (lists)
+      - "Section 54, Sale of Goods Act 1930" (comma form)
+      - "Article 8 of the Constitution"
+      - Bare "Section 14" mentions (e.g. markdown headings), attributed
+        to the nearest act reference — or the only act mentioned.
+    """
     import re
 
-    citations = []
-    # Match patterns like "Section X of the Y Act" or "Article X"
-    pattern = r"(?:Section|Article|Sec\.?)\s+(\d+[-A-Za-z]*)\s+(?:of\s+(?:the\s+)?)([A-Z][A-Za-z\s]+?Act|Constitution|Ordinance|Code)"
-    for match in re.finditer(pattern, response_text):
-        citations.append({
-            "section": match.group(1),
-            "act": match.group(2).strip(),
-        })
+    if not response_text:
+        return []
+
+    # Act names: "Contract Act", "Pakistan Penal Code", "Transfer of Property
+    # Act", "West Pakistan Land Revenue Ordinance", "the Constitution".
+    act_pattern = (
+        r"\b("
+        r"[A-Z][A-Za-z]*(?:\s+(?:of|and|the|[A-Z][A-Za-z]*))*\s+(?:Act|Code|Ordinance)"
+        r"|(?:The\s+|the\s+)?Constitution"
+        r")\b"
+    )
+    # Section references, incl. lists: "Sections 10, 14, and 15".
+    sec_pattern = (
+        r"\b(?:Sections?|Sec\.?|Articles?|Arts?\.?)\s+"
+        r"(\d+(?:-[A-Za-z0-9]+)?(?:\s*(?:,\s*(?:and\s+)?|and\s+|&\s*)\d+(?:-[A-Za-z0-9]+)?)*)"
+    )
+    # Generic references that are not real act names.
+    _generic_acts = {"act", "the act", "this act", "said act", "an act", "any act", "code"}
+
+    def _clean_act(name: str) -> str:
+        name = re.sub(r"\s+", " ", name).strip(" ,.")
+        return re.sub(r"^(?:The|the)\s+", "", name)
+
+    act_matches = [
+        (m.start(), m.end(), cleaned)
+        for m in re.finditer(act_pattern, response_text)
+        if (cleaned := _clean_act(m.group(1))) and cleaned.lower() not in _generic_acts
+    ]
+    if not act_matches:
+        return []
+    norm_acts: dict[str, str] = {}
+    for _, _, a in act_matches:
+        norm_acts.setdefault(_norm(a), a)
+
+    citations: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+
+    for m in re.finditer(sec_pattern, response_text):
+        numbers = re.findall(r"\d+(?:-[A-Za-z0-9]+)?", m.group(1))
+        if not numbers:
+            continue
+
+        # Direct act reference right after: "of the X Act" / ", X Act"
+        act = None
+        rest = response_text[m.end():m.end() + 140]
+        lead = re.match(r"\s*,?\s*(?:(?:of|under|per|in)\s+)?(?:the\s+)?", rest)
+        if lead and lead.end() > 0:
+            am = re.match(act_pattern, rest[lead.end():])
+            if am:
+                act = _clean_act(am.group(1))
+
+        # Fall back to the nearest act reference (prefer preceding)
+        if act is None or act.lower() in _generic_acts:
+            pos = m.start()
+            preceding = [t for t in act_matches if t[1] <= pos and pos - t[1] <= 400]
+            following = [t for t in act_matches if t[0] >= m.end() and t[0] - m.end() <= 400]
+            if preceding:
+                act = max(preceding, key=lambda t: t[1])[2]
+            elif following:
+                act = min(following, key=lambda t: t[0])[2]
+            elif len(norm_acts) == 1:
+                act = next(iter(norm_acts.values()))
+            else:
+                continue
+
+        for num in numbers:
+            key = (_norm(num), _norm(act))
+            if key in seen:
+                continue
+            seen.add(key)
+            citations.append({"section": num, "act": act})
+
+    return citations[:12]
+
+
+def _norm(s: str) -> str:
+    """Normalize for fuzzy act/section comparison (lowercase alphanumerics only)."""
+    import re
+
+    return re.sub(r"[^a-z0-9]", "", s.lower())
+
+
+def _verify_citations(citations: list[dict], retrieved: list) -> list[dict]:
+    """Mark each extracted citation as verified iff it maps to a retrieved chunk.
+
+    A citation (act, section) is verified when some retrieved chunk's act name
+    matches (normalized substring, either direction) AND its section number
+    matches exactly (normalized). Verified citations also carry a snippet of
+    the actual statute text so the UI can show the grounding evidence.
+    """
+    if not citations:
+        return citations
+
+    for c in citations:
+        c_act = _norm(c.get("act", ""))
+        c_sec = _norm(str(c.get("section", "")))
+        verified = False
+
+        for r in retrieved:
+            chunk = r.chunk
+            if not chunk.section_number:
+                continue
+            r_act = _norm(chunk.act_name)
+            act_match = c_act and (c_act in r_act or r_act in c_act)
+            if act_match and c_sec and c_sec == _norm(chunk.section_number):
+                verified = True
+                if not c.get("text_snippet"):
+                    c["text_snippet"] = chunk.text[:400].strip()
+                break
+
+        c["verified"] = verified
 
     return citations

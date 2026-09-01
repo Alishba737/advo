@@ -1,0 +1,209 @@
+{
+  "nodes": [
+    {
+      "id": "contract_act_1872__s1",
+      "type": "provision",
+      "act": "Contract Act 1872",
+      "section": "1",
+      "title": "Section 1",
+      "domain_tags": [
+        "contract"
+      ],
+      "summary": "1. Short title.\nThis Act may be called the Contract Act, 1872.\nIt extends to the whole of Pakistan.\nNothing herein contained shall affect the provisions of any Statute, Act or Regulation not hereby ex"
+    },
+    {
+      "id": "contract_act_1872__s2",
+      "type": "provision",
+      "act": "Contract Act 1872",
+      "section": "2",
+      "title": "Section 2",
+      "domain_tags": [
+        "contract"
+      ],
+      "summary": "2. Interpretation-clause.\nIn this Act the following words and expressions are used in the following senses, unless a contrary intention appears from the context:\n(a) When one person signifies to anoth"
+    },
+    {
+      "id": "contract_act_1872__s3",
+      "type": "provision",
+      "act": "Contract Act 1872",
+      "section": "3",
+      "title": "Section 3",
+      "domain_tags": [
+        "contract"
+      ],
+      "summary": "3. Communication, acceptance and revocation of proposals.\nThe communication of proposals, the acceptance of proposals, and the revocation of proposals and acceptances, respectively, are deemed to be m"
+    },
+    {
+      "id": "contract_act_1872__s4",
+      "type": "provision",
+      "act": "Contract Act 1872",
+      "section": "4",
+      "title": "Section 4",
+      "domain_tags": [
+        "contract"
+      ],
+      "summary": "4. Communication when complete.\nThe communication of a proposal is complete when it comes to the knowledge of the person to whom it is made.\nThe communication of an acceptance is complete, as against "
+    },
+    {
+      "id": "contract_act_1872__s5",
+      "type": "provision",
+      "act": "Contract Act 1872",
+      "section": "5",
+      "title": "Section 5",
+      "domain_tags": [
+        "contract"
+      ],
+      "summary": "5. Revocation of proposals and acceptances.\nA proposal may be revoked at any time before the communication of its acceptance is complete as against the proposer, but not afterwards.\nAn acceptance may "
+    },
+    {
+      "id": "contract_act_1872__s10",
+      "type": "provision",
+      "act": "Contract Act 1872",
+      "section": "10",
+      "title": "Section 10",
+      "domain_tags": [
+        "contract"
+      ],
+      "summary": "10. What agreements are contracts.\nAll agreements are contracts if they are made by the free consent of parties competent to contract, for a lawful consideration and with a lawful object, and are not "
+    },
+    {
+      "id": "contract_act_1872__s11",
+      "type": "provision",
+      "act": "Contract Act 1872",
+      "section": "11",
+      "title": "Section 11",
+      "domain_tags": [
+        "contract"
+      ],
+      "summary": "11. Who are competent to contract.\nEvery person is competent to contract who is not disqualified from contracting by any law to which he is subject, and who is of sound mind, and who is not disqualifi"
+    },
+    {
+      "id": "contract_act_1872__s12",
+      "type": "provision",
+      "act": "Contract Act 1872",
+      "section": "12",
+      "title": "Section 12",
+      "domain_tags": [
+        "contract"
+      ],
+      "summary": "12. What is a sound mind for the purposes of contracting.\nA person is said to be of sound mind for the purpose of making a contract if, at the time when he makes it, he is capable of understanding it "
+    },
+    {
+      "id": "contract_act_1872__s13",
+      "type": "provision",
+      "act": "Contract Act 1872",
+      "section": "13",
+      "title": "Section 13",
+      "domain_tags": [
+        "criminal"
+      ],
+      "summary": "13. \"Consent\" defined.\nTwo or more persons are said to consent when they agree upon the same thing in the same sense."
+    },
+    {
+      "id": "contract_act_1872__s14",
+      "type": "provision",
+      "act": "Contract Act 1872",
+      "section": "14",
+      "title": "Section 14",
+      "domain_tags": [
+        "criminal"
+      ],
+      "summary": "14. \"Free consent\" defined.\nConsent is said to be free when it is not caused by:\n(1) coercion, as defined in section 15;\n(2) undue influence, as defined in section 16;\n(3) fraud, as defined in section"
+    },
+    {
+      "id": "contract_act_1872__s15",
+      "type": "provision",
+      "act": "Contract Act 1872",
+      "section": "15",
+      "title": "Section 15",
+      "domain_tags": [
+        "contract",
+        "property",
+        "criminal"
+      ],
+      "summary": "15. \"Coercion\" defined.\n\"Coercion\" is the committing, or threatening to commit, any act forbidden by the Pakistan Penal Code, or the unlawful detaining, or threatening to detain, any property, to the "
+    },
+    {
+      "id": "contract_act_1872__s16",
+      "type": "provision",
+      "act": "Contract Act 1872",
+      "section": "16",
+      "title": "Section 16",
+      "domain_tags": [
+        "contract",
+        "property",
+        "criminal"
+      ],
+      "summary": "16. \"Undue influence\" defined.\n(1) A contract is said to be induced by \"undue influence\" where the relations subsisting between the parties are such that one of the parties is in a position to dominat"
+    },
+    {
+      "id": "contract_act_1872__s17",
+      "type": "provision",
+      "act": "Contract Act 1872",
+      "section": "17",
+      "title": "Section 17",
+      "domain_tags": [
+        "contract",
+        "criminal"
+      ],
+      "summary": "17. \"Fraud\" defined.\n\"Fraud\" means and includes any of the following acts committed by a party to a contract, or with his connivance, or by his agent, with intent to deceive another party thereto or h"
+    },
+    {
+      "id": "contract_act_1872__s23",
+      "type": "provision",
+      "act": "Contract Act 1872",
+      "section": "23",
+      "title": "Section 23",
+      "domain_tags": [
+        "contract",
+        "property"
+      ],
+      "summary": "23. What considerations and objects are lawful, and what not.\nThe consideration or object of an agreement is lawful, unless:\nit is forbidden by law; or\nis of such a nature that, if permitted, it would"
+    },
+    {
+      "id": "contract_act_1872__s37",
+      "type": "provision",
+      "act": "Contract Act 1872",
+      "section": "37",
+      "title": "Section 37",
+      "domain_tags": [
+        "contract"
+      ],
+      "summary": "37. Obligation of parties to contracts.\nThe parties to a contract must either perform, or offer to perform, their respective promises, unless such performance is dispensed with or excused under the pr"
+    },
+    {
+      "id": "contract_act_1872__s39",
+      "type": "provision",
+      "act": "Contract Act 1872",
+      "section": "39",
+      "title": "Section 39",
+      "domain_tags": [
+        "contract"
+      ],
+      "summary": "39. Effect of refusal of party to perform promise wholly.\nWhen a party to a contract has refused to perform, or disabled himself from performing, his promise in its entirety, the promisee may put an e"
+    },
+    {
+      "id": "contract_act_1872__s73",
+      "type": "provision",
+      "act": "Contract Act 1872",
+      "section": "73",
+      "title": "Section 73",
+      "domain_tags": [
+        "contract"
+      ],
+      "summary": "73. Compensation for loss or damage caused by breach of contract.\nWhen a contract has been broken, the party who suffers by such breach is entitled to receive, from the party who has broken the contra"
+    },
+    {
+      "id": "contract_act_1872__s74",
+      "type": "provision",
+      "act": "Contract Act 1872",
+      "section": "74",
+      "title": "Section 74",
+      "domain_tags": [
+        "contract"
+      ],
+      "summary": "74. Compensation for breach of contract where penalty stipulated for.\nWhen a contract has been broken, if a sum is named in the contract as the amount to be paid in case of such breach, or if the cont"
+    }
+  ],
+  "edges": []
+}

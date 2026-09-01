@@ -24,6 +24,50 @@ class DashScopeConfig:
     embedding_model: str = field(
         default_factory=lambda: os.getenv("DASHSCOPE_EMBEDDING_MODEL", "text-embedding-v3")
     )
+    primary_model: str = field(
+        default_factory=lambda: os.getenv("DASHSCOPE_PRIMARY_MODEL", "qwen3.8-max")
+    )
+    fast_model: str = field(
+        default_factory=lambda: os.getenv("DASHSCOPE_FAST_MODEL", "qwen3.8-flash")
+    )
+
+
+@dataclass
+class VoiceConfig:
+    """Voice I/O settings — all models served by the DashScope workspace endpoint.
+
+    STT uses the realtime WebSocket (wss://…/api-ws/v1/realtime?model=…);
+    TTS uses the native multimodal-generation HTTP API.
+    """
+
+    asr_model: str = field(
+        default_factory=lambda: os.getenv("VOICE_ASR_MODEL", "qwen3-asr-flash-realtime")
+    )
+    asr_transcription_model: str = field(
+        default_factory=lambda: os.getenv("VOICE_ASR_TRANSCRIPTION_MODEL", "qwen3-asr-flash")
+    )
+    tts_model: str = field(
+        default_factory=lambda: os.getenv("VOICE_TTS_MODEL", "qwen3-tts-flash")
+    )
+    tts_voice: str = field(
+        default_factory=lambda: os.getenv("VOICE_TTS_VOICE", "Cherry")
+    )
+    sample_rate: int = 16000
+
+    @property
+    def realtime_ws_url(self) -> str:
+        """wss realtime endpoint derived from the DashScope base URL.
+
+        https://ws-….ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1
+          -> wss://ws-….ap-southeast-1.maas.aliyuncs.com/api-ws/v1/realtime
+        """
+        host = cfg.dashscope.base_url.split("/compatible-mode")[0].replace("https://", "")
+        return f"wss://{host}/api-ws/v1/realtime"
+
+    @property
+    def native_http_url(self) -> str:
+        """Native DashScope API base (…/api/v1) derived from the base URL."""
+        return cfg.dashscope.base_url.split("/compatible-mode")[0] + "/api/v1"
 
 
 @dataclass
@@ -52,14 +96,56 @@ class RAGConfig:
     vector_weight: float = 0.7
 
 
+def resolve_device() -> str:
+    """Resolve the compute device for local models.
+
+    DEVICE env var:
+      - "auto" (default) → CUDA GPU if torch + CUDA available, else CPU
+      - "cuda" / "gpu"   → GPU, but falls back to CPU if unavailable
+      - "cpu"            → always CPU
+    """
+    requested = os.getenv("DEVICE", "auto").strip().lower()
+
+    if requested == "cpu":
+        return "cpu"
+
+    cuda_available = False
+    try:
+        import torch
+
+        cuda_available = torch.cuda.is_available()
+    except ImportError:
+        pass
+
+    if cuda_available:
+        return "cuda"
+    if requested in ("cuda", "gpu"):
+        print("  DEVICE=cuda requested but CUDA is not available — using CPU")
+    return "cpu"
+
+
 @dataclass
 class AppConfig:
     dashscope: DashScopeConfig = field(default_factory=DashScopeConfig)
     qdrant: QdrantConfig = field(default_factory=QdrantConfig)
     rag: RAGConfig = field(default_factory=RAGConfig)
-    device: str = field(default_factory=lambda: os.getenv("DEVICE", "cpu"))
+    voice: VoiceConfig = field(default_factory=VoiceConfig)
+    embedding_provider: str = field(
+        default_factory=lambda: os.getenv("EMBEDDING_PROVIDER", "auto").strip().lower()
+    )
+    embedding_model: str = field(
+        default_factory=lambda: os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3")
+    )
     legal_data_dir: Path = DATA_ROOT / "legal"
     graph_path: Path = DATA_ROOT / "legal" / "legal_graph.json"
+    _device: str | None = field(default=None, repr=False, compare=False)
+
+    @property
+    def device(self) -> str:
+        """Compute device for local models — GPU when available, CPU otherwise (cached)."""
+        if self._device is None:
+            self._device = resolve_device()
+        return self._device
 
     def validate(self) -> list[str]:
         """Return list of missing configuration."""
