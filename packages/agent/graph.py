@@ -30,6 +30,7 @@ class AgentState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
     user_mode: str  # citizen, student, lawyer
     session_id: str
+    project_instructions: str  # optional project-level instructions
 
 
 class AdvoAgent:
@@ -78,8 +79,9 @@ class AdvoAgent:
         messages = state["messages"]
         user_mode = state.get("user_mode", "citizen")
 
-        # Prepend system prompt
-        system_prompt = get_system_prompt(user_mode)
+        # Prepend system prompt, optionally augmented by project instructions
+        project_instructions = state.get("project_instructions", "")
+        system_prompt = get_system_prompt(user_mode, project_instructions or None)
         full_messages = [SystemMessage(content=system_prompt)] + messages
 
         # Call LLM with tools
@@ -103,6 +105,7 @@ class AdvoAgent:
         session_id: str = "default",
         user_mode: str = "citizen",
         history: list[BaseMessage] | None = None,
+        project_instructions: str | None = None,
     ) -> dict:
         """Send a message and get a complete response.
 
@@ -121,6 +124,7 @@ class AdvoAgent:
             "messages": messages,
             "user_mode": user_mode,
             "session_id": session_id,
+            "project_instructions": project_instructions or "",
         }
 
         result = self.graph.invoke(input_state)
@@ -155,6 +159,7 @@ class AdvoAgent:
         session_id: str = "default",
         user_mode: str = "citizen",
         history: list[BaseMessage] | None = None,
+        project_instructions: str | None = None,
     ):
         """Stream the agent's response token by token.
 
@@ -171,6 +176,7 @@ class AdvoAgent:
             "messages": messages,
             "user_mode": user_mode,
             "session_id": session_id,
+            "project_instructions": project_instructions or "",
         }
 
         for event in self.graph.stream(input_state, stream_mode="updates"):

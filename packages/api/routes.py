@@ -7,6 +7,7 @@ import json
 import re
 import uuid
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, Body
 from fastapi.responses import StreamingResponse, Response
@@ -20,11 +21,18 @@ from packages.api.schemas import (
     StreamEvent,
     SpeakRequest,
     TranscriptionResponse,
+    LawLibraryResponse,
+    LawCategory,
+    LawAct,
+    LawSection,
+    LawSectionText,
 )
 from packages.api.main import get_agent, get_retriever
 from packages.agent.graph import _extract_citations, _verify_citations
 from packages.agent.tools import get_retrieved_chunks
 from packages.agent.memory import memory
+from packages.projects.store import project_store
+from packages.projects.models import ProjectCreate, ProjectUpdate, ProjectDocument
 
 router = APIRouter()
 
@@ -33,6 +41,60 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 
 # Max characters of attached-document text injected into the LLM context
 MAX_DOC_CONTEXT_CHARS = 8000
+
+# Supported file types for document upload
+_ALLOWED_TYPES = {
+    "application/pdf": ".pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+    "text/plain": ".txt",
+}
+
+
+def _save_upload_and_extract(file: UploadFile) -> UploadResponse:
+    """Persist an uploaded file, extract text, and return upload metadata."""
+    if file.content_type not in _ALLOWED_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type: {file.content_type}. Allowed: PDF, DOCX, TXT",
+        )
+
+    doc_id = str(uuid.uuid4())[:8]
+    ext = _ALLOWED_TYPES[file.content_type]
+    filename = f"{doc_id}{ext}"
+    filepath = UPLOAD_DIR / filename
+
+    content = file.file.read()
+    filepath.write_bytes(content)
+
+    text = ""
+    if ext == ".pdf":
+        try:
+            import fitz  # PyMuPDF
+            doc = fitz.open(str(filepath))
+            text = "\n".join(page.get_text() for page in doc)
+            doc.close()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"PDF extraction failed: {e}")
+
+    elif ext == ".docx":
+        try:
+            from docx import Document
+            doc = Document(str(filepath))
+            text = "\n".join(para.text for para in doc.paragraphs)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"DOCX extraction failed: {e}")
+
+    elif ext == ".txt":
+        text = filepath.read_text(encoding="utf-8")
+
+    (UPLOAD_DIR / f"{doc_id}.txt").write_text(text, encoding="utf-8")
+
+    return UploadResponse(
+        document_id=doc_id,
+        filename=file.filename or filename,
+        text_length=len(text),
+        preview=text[:500] if text else "(empty document)",
+    )
 
 
 def _load_document_context(document_ids: list[str] | None) -> str:
@@ -60,6 +122,26 @@ def _augment_with_documents(message: str, document_ids: list[str] | None) -> str
         f"{message}\n\n"
         f"The user has attached the following document(s) for analysis:\n\n{context}"
     )
+
+
+def _resolve_project_context(request: ChatRequest) -> tuple[str | None, list[str]]:
+    """Return project instructions and merged document ids for a chat request.
+
+    If a project_id is provided, the backend loads the project and uses its
+    instructions and document list as context. Explicit document_ids are merged
+    in and filtered to the project's own documents.
+    """
+    if not request.project_id:
+        return None, request.document_ids or []
+
+    project = project_store.get_project(request.project_id)
+    if not project:
+        return None, request.document_ids or []
+
+    project_doc_ids = {d.id for d in project.documents}
+    explicit_ids = [d for d in (request.document_ids or []) if d in project_doc_ids]
+    merged = list(dict.fromkeys(explicit_ids + list(project_doc_ids)))[:3]
+    return project.instructions, merged
 
 
 # Topics where getting it wrong carries real consequences — we surface a
@@ -91,6 +173,154 @@ def _confidence(citations: list) -> str:
     if any(flags):
         return "medium"
     return "low"
+
+
+# ─── Law Library ───────────────────────────────────────────────
+
+# Act metadata and official sources (Pakistan statutory texts)
+_ACT_OFFICIAL_URLS: dict[str, str] = {
+    "Contract Act 1872": "https://www.na.gov.pk/uploads/documents/1333523681_951.pdf",
+    "Pakistan Penal Code 1860": "https://www.na.gov.pk/uploads/documents/1333523681_951.pdf",
+    "Criminal Procedure Code 1898": "https://www.na.gov.pk/uploads/documents/1333523681_951.pdf",
+    "Qanun-e-Shahadat 1984": "https://www.na.gov.pk/uploads/documents/1333523681_951.pdf",
+    "Constitution of Pakistan 1973": "https://www.na.gov.pk/uploads/documents/1973_constitution.pdf",
+}
+
+# Human-readable category from domain tag
+_CATEGORY_MAP: dict[str, str] = {
+    "contract": "Contract Law",
+    "criminal": "Criminal Law",
+    "family": "Family Law",
+    "evidence": "Evidence",
+    "property": "Property Law",
+    "constitutional": "Constitutional Law",
+}
+
+
+@router.get("/laws", response_model=LawLibraryResponse)
+async def law_library():
+    """Return the structured legal library (acts, sections, summaries)."""
+    graph_path = Path(__file__).resolve().parent.parent.parent / "data" / "legal" / "legal_graph.json"
+    if not graph_path.exists():
+        return LawLibraryResponse(categories=[])
+
+    data = json.loads(graph_path.read_text(encoding="utf-8"))
+    nodes = data.get("nodes", [])
+
+    # Group provision nodes by act
+    acts_map: dict[str, dict] = {}
+    for node in nodes:
+        if node.get("type") != "provision":
+            continue
+        act = node.get("act") or "Unknown Act"
+        acts_map.setdefault(act, {"sections": [], "tags": []})
+        acts_map[act]["sections"].append(node)
+        acts_map[act]["tags"].extend(node.get("domain_tags", []))
+
+    # Build categories
+    category_acts: dict[str, list[LawAct]] = {}
+    for act, info in acts_map.items():
+        nodes_sorted = sorted(info["sections"], key=lambda n: _section_sort_key(n.get("section", "")))
+        official_url = _ACT_OFFICIAL_URLS.get(act, "https://www.na.gov.pk")
+
+        # Attach per-section source URLs that jump to the section inside the PDF.
+        # Chromium/Edge PDF viewers support #search=<query>.
+        def _section_source_url(section: str) -> str:
+            if not official_url.endswith(".pdf"):
+                return official_url
+            return f"{official_url}#search={quote(f'Section {section}', safe='')}"
+
+        sections = [
+            LawSection(
+                section=n.get("section", ""),
+                title=n.get("title", ""),
+                summary=n.get("summary", ""),
+                domain_tags=n.get("domain_tags", []),
+                source_url=_section_source_url(n.get("section", "")),
+            )
+            for n in nodes_sorted
+        ]
+
+        # Pick category from most common tag
+        tags = info["tags"]
+        tag = max(set(tags), key=tags.count) if tags else "general"
+        category = _CATEGORY_MAP.get(tag, tag.replace("_", " ").title())
+
+        # Extract year from act name if present
+        year = ""
+        if match := re.search(r"\b(18|19|20)\d{2}\b", act):
+            year = match.group(0)
+
+        law_act = LawAct(
+            name=act,
+            year=year,
+            category=category,
+            official_url=official_url,
+            section_count=len(sections),
+            sections=sections,
+        )
+        category_acts.setdefault(category, []).append(law_act)
+
+    categories = [
+        LawCategory(name=cat, acts=acts)
+        for cat, acts in sorted(category_acts.items())
+    ]
+    return LawLibraryResponse(categories=categories)
+
+
+def _section_sort_key(section: str) -> tuple[int, str]:
+    """Sort section labels numerically when possible."""
+    digits = re.sub(r"[^0-9]", "", section)
+    return (int(digits) if digits.isdigit() else 9999, section)
+
+
+def _act_filename(act: str) -> str | None:
+    """Map act display name to the legal text file in data/legal/."""
+    legal_dir = Path(__file__).resolve().parent.parent.parent / "data" / "legal"
+    # Try direct normalization first
+    normalized = act.lower().replace(" ", "_").replace(",", "").replace(".", "")
+    candidates = [
+        legal_dir / f"{normalized}.txt",
+        legal_dir / f"{normalized}_act.txt",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return str(candidate)
+
+    # Fallback: scan for any file whose name contains the act year or main words
+    words = [w for w in re.findall(r"[A-Za-z]+", act.lower()) if len(w) > 2]
+    for filepath in legal_dir.glob("*.txt"):
+        name_lower = filepath.stem.lower()
+        if all(w in name_lower for w in words[:2]):
+            return str(filepath)
+    return None
+
+
+def _extract_section_text(act: str, section: str) -> LawSectionText | None:
+    """Read the act text file and extract the full text of one section."""
+    filepath = _act_filename(act)
+    if not filepath:
+        return None
+
+    text = Path(filepath).read_text(encoding="utf-8")
+    # Section headers look like: "1. Short title." or "10. What agreements are contracts."
+    pattern = re.compile(rf"^({re.escape(section)})\.\s+(.*?)\n(.*?)(?=\n\d+\.\s|\Z)", re.MULTILINE | re.DOTALL)
+    match = pattern.search(text)
+    if not match:
+        return None
+
+    title = match.group(2).strip()
+    body = match.group(3).strip()
+    return LawSectionText(act=act, section=section, title=title, full_text=body)
+
+
+@router.get("/laws/section", response_model=LawSectionText)
+async def law_section_text(act: str, section: str):
+    """Return the full text of a single statutory section."""
+    result = _extract_section_text(act, section)
+    if not result:
+        raise HTTPException(status_code=404, detail="Section not found")
+    return result
 
 
 # ─── Health ────────────────────────────────────────────────────
@@ -130,12 +360,14 @@ async def chat(request: ChatRequest):
     agent = get_agent()
 
     history = memory.get_last_n(request.session_id, n=10)
+    project_instructions, document_ids = _resolve_project_context(request)
 
     result = agent.chat(
-        user_message=_augment_with_documents(request.message, request.document_ids),
+        user_message=_augment_with_documents(request.message, document_ids),
         session_id=request.session_id,
         user_mode=request.user_mode,
         history=history,
+        project_instructions=project_instructions,
     )
 
     # Store in memory (the original message, without document text)
@@ -171,15 +403,17 @@ async def chat_stream(request: ChatRequest):
     agent = get_agent()
 
     history = memory.get_last_n(request.session_id, n=10)
+    project_instructions, document_ids = _resolve_project_context(request)
 
     async def event_generator():
         full_response = ""
         try:
             for event in agent.chat_stream(
-                user_message=_augment_with_documents(request.message, request.document_ids),
+                user_message=_augment_with_documents(request.message, document_ids),
                 session_id=request.session_id,
                 user_mode=request.user_mode,
                 history=history,
+                project_instructions=project_instructions,
             ):
                 # Skip the agent's bare "done" — we emit an enriched one with citations
                 if event["type"] == "done":
@@ -240,58 +474,7 @@ async def chat_stream(request: ChatRequest):
 @router.post("/upload", response_model=UploadResponse)
 async def upload_document(file: UploadFile = File(...)):
     """Upload a legal document for analysis."""
-    allowed_types = {
-        "application/pdf": ".pdf",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
-        "text/plain": ".txt",
-    }
-
-    if file.content_type not in allowed_types:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported file type: {file.content_type}. Allowed: PDF, DOCX, TXT",
-        )
-
-    # Save file
-    doc_id = str(uuid.uuid4())[:8]
-    ext = allowed_types[file.content_type]
-    filename = f"{doc_id}{ext}"
-    filepath = UPLOAD_DIR / filename
-
-    content = await file.read()
-    filepath.write_bytes(content)
-
-    # Extract text
-    text = ""
-    if ext == ".pdf":
-        try:
-            import fitz  # PyMuPDF
-            doc = fitz.open(str(filepath))
-            text = "\n".join(page.get_text() for page in doc)
-            doc.close()
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"PDF extraction failed: {e}")
-
-    elif ext == ".docx":
-        try:
-            from docx import Document
-            doc = Document(str(filepath))
-            text = "\n".join(para.text for para in doc.paragraphs)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"DOCX extraction failed: {e}")
-
-    elif ext == ".txt":
-        text = filepath.read_text(encoding="utf-8")
-
-    # Persist the extracted text so chat requests can attach it as context
-    (UPLOAD_DIR / f"{doc_id}.txt").write_text(text, encoding="utf-8")
-
-    return UploadResponse(
-        document_id=doc_id,
-        filename=file.filename or filename,
-        text_length=len(text),
-        preview=text[:500] if text else "(empty document)",
-    )
+    return _save_upload_and_extract(file)
 
 
 # ─── Session Management ───────────────────────────────────────
@@ -363,3 +546,79 @@ async def voice_speak(request: SpeakRequest):
         media_type="audio/wav",
         headers={"Content-Disposition": 'inline; filename="advo-response.wav"'},
     )
+
+
+# ─── Projects ─────────────────────────────────────────────────
+
+@router.get("/projects")
+async def list_projects(role: str | None = None):
+    """List projects, optionally filtered by role."""
+    projects = project_store.list_projects(role=role)  # type: ignore[arg-type]
+    return {"projects": [p.model_dump(mode="json") for p in projects]}
+
+
+@router.post("/projects")
+async def create_project_endpoint(payload: ProjectCreate):
+    """Create a new project."""
+    project = project_store.create_project(payload)
+    return project.model_dump(mode="json")
+
+
+@router.get("/projects/{project_id}")
+async def get_project_endpoint(project_id: str):
+    """Get a single project by ID."""
+    project = project_store.get_project(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return project.model_dump(mode="json")
+
+
+@router.put("/projects/{project_id}")
+async def update_project_endpoint(project_id: str, payload: ProjectUpdate):
+    """Update a project's metadata."""
+    project = project_store.update_project(project_id, payload)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return project.model_dump(mode="json")
+
+
+@router.delete("/projects/{project_id}")
+async def delete_project_endpoint(project_id: str):
+    """Delete a project and remove its document associations."""
+    deleted = project_store.delete_project(project_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return {"status": "deleted", "project_id": project_id}
+
+
+@router.post("/projects/{project_id}/documents")
+async def upload_project_document(project_id: str, file: UploadFile = File(...)):
+    """Upload a document and attach it to a project."""
+    project = project_store.get_project(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    if len(project.documents) >= 5:
+        raise HTTPException(status_code=400, detail="Project document limit reached (max 5)")
+
+    result = _save_upload_and_extract(file)
+    updated = project_store.add_document(
+        project_id,
+        ProjectDocument(
+            id=result.document_id,
+            filename=result.filename,
+            text_length=result.text_length,
+            preview=result.preview,
+        ),
+    )
+    if not updated:
+        raise HTTPException(status_code=500, detail="Failed to attach document to project")
+    return updated.model_dump(mode="json")
+
+
+@router.delete("/projects/{project_id}/documents/{document_id}")
+async def remove_project_document(project_id: str, document_id: str):
+    """Remove a document association from a project."""
+    project = project_store.remove_document(project_id, document_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return project.model_dump(mode="json")

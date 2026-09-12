@@ -12,6 +12,7 @@ class ChatRequest(BaseModel):
     user_mode: Literal["citizen", "student", "lawyer"] = "citizen"
     jurisdiction: Optional[str] = "Pakistan"
     document_ids: Optional[list[str]] = None
+    project_id: Optional[str] = None
 
 
 class CitationResponse(BaseModel):
@@ -70,3 +71,36 @@ class TranscriptionResponse(BaseModel):
 
     text: str
     duration_ms: Optional[int] = None
+
+
+class LawSection(BaseModel):
+    section: str
+    title: str
+    summary: str
+    domain_tags: list[str]
+    source_url: str
+
+
+class LawAct(BaseModel):
+    name: str
+    year: str
+    category: str
+    official_url: str
+    section_count: int
+    sections: list[LawSection]
+
+
+class LawCategory(BaseModel):
+    name: str
+    acts: list[LawAct]
+
+
+class LawLibraryResponse(BaseModel):
+    categories: list[LawCategory]
+
+
+class LawSectionText(BaseModel):
+    act: str
+    section: str
+    title: str
+    full_text: str

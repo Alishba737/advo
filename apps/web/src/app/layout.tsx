@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Suspense } from "react";
 
-import { SiteHeader } from "@/components/advo/site-header";
+import { RoleProvider } from "@/components/providers/role-provider";
+import { AppSidebar } from "@/components/advo/app-sidebar";
 
 import "./globals.css";
 
@@ -27,9 +29,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col">
-        <SiteHeader />
-        <main className="flex flex-1 flex-col">{children}</main>
+      <body className="flex h-full overflow-hidden">
+        <RoleProvider>
+          <Suspense fallback={<aside className="w-64 shrink-0 border-r border-sidebar-border bg-sidebar" />}>
+            <AppSidebar />
+          </Suspense>
+          <main className="flex flex-1 flex-col overflow-hidden">{children}</main>
+        </RoleProvider>
       </body>
     </html>
   );

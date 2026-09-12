@@ -50,6 +50,56 @@ export interface HealthStatus {
   status?: string;
 }
 
+export interface LawSection {
+  section: string;
+  title: string;
+  summary: string;
+  domain_tags: string[];
+  source_url: string;
+}
+
+export interface LawAct {
+  name: string;
+  year: string;
+  category: string;
+  official_url: string;
+  section_count: number;
+  sections: LawSection[];
+}
+
+export interface LawCategory {
+  name: string;
+  acts: LawAct[];
+}
+
+export interface LawLibrary {
+  categories: LawCategory[];
+}
+
+/** GET /laws — structured legal library. */
+export async function fetchLaws(): Promise<LawLibrary> {
+  const res = await fetch(`${API_BASE}/laws`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Could not load law library (${res.status})`);
+  return res.json() as Promise<LawLibrary>;
+}
+
+export interface LawSectionText {
+  act: string;
+  section: string;
+  title: string;
+  full_text: string;
+}
+
+/** GET /laws/section — full text of one section. */
+export async function fetchLawSection(act: string, section: string): Promise<LawSectionText> {
+  const params = new URLSearchParams({ act, section });
+  const res = await fetch(`${API_BASE}/laws/section?${params.toString()}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Could not load section (${res.status})`);
+  return res.json() as Promise<LawSectionText>;
+}
+
 // ─── Session helpers ─────────────────────────────────────────
 
 const SESSION_KEY = "advo-session-id";
@@ -112,6 +162,18 @@ export async function fetchSessionMessages(
   return data.messages ?? [];
 }
 
+/** DELETE /sessions/:id — remove a chat session. */
+export async function deleteSession(sessionId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/sessions/${sessionId}`, {
+    method: "DELETE",
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.detail ?? `Could not delete session (${res.status})`);
+  }
+}
+
 // ─── Chat (streaming) ────────────────────────────────────────
 
 export interface StreamChatParams {
@@ -119,6 +181,7 @@ export interface StreamChatParams {
   sessionId: string;
   userMode: UserMode;
   documentIds?: string[];
+  projectId?: string;
   onEvent: (event: StreamEvent) => void;
   signal?: AbortSignal;
 }
@@ -129,6 +192,7 @@ export async function streamChat({
   sessionId,
   userMode,
   documentIds,
+  projectId,
   onEvent,
   signal,
 }: StreamChatParams): Promise<void> {
@@ -140,6 +204,7 @@ export async function streamChat({
       session_id: sessionId,
       user_mode: userMode,
       document_ids: documentIds?.length ? documentIds : undefined,
+      project_id: projectId,
     }),
     signal,
   });

@@ -1,0 +1,43 @@
+{
+  "projects": [
+    {
+      "id": "25c87d02",
+      "name": "Rental Agreement Test",
+      "role": "citizen",
+      "description": null,
+      "instructions": null,
+      "documents": [
+        {
+          "id": "1c3acfe0",
+          "filename": "rental_terms.txt",
+          "text_length": 51,
+          "preview": "The tenant must pay rent by the 5th of every month.",
+          "uploaded_at": "2026-09-04T16:01:02.181392+00:00"
+        }
+      ],
+      "created_at": "2026-09-04T16:00:13.657585+00:00",
+      "updated_at": "2026-09-04T16:01:02.181392+00:00"
+    },
+    {
+      "id": "361306ff",
+      "name": "UI Test Project",
+      "role": "student",
+      "description": "",
+      "instructions": "",
+      "documents": [],
+      "created_at": "2026-09-04T16:23:17.843689+00:00",
+      "updated_at": "2026-09-04T16:23:17.843689+00:00"
+    },
+    {
+      "id": "ea315e91",
+      "name": "cat",
+      "role": "citizen",
+      "description": "",
+      "instructions": "",
+      "documents": [],
+      "created_at": "2026-09-04T16:38:10.775205+00:00",
+      "updated_at": "2026-09-04T16:38:10.775205+00:00"
+    }
+  ],
+  "updated_at": "2026-09-04T16:38:10.775205+00:00"
+}

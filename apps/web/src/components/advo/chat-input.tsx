@@ -56,7 +56,7 @@ export function ChatInput({
     if (transcribing) return;
     setSttError(null);
     if (recording) {
-      const pcm = stop();
+      const pcm = await stop();
       if (!pcm) return;
       setTranscribing(true);
       try {
